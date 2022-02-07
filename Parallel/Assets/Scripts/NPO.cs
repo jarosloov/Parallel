@@ -64,7 +64,7 @@ public static class NPO
     public static Vector3 GetLineParallelCoord(Vector3 point1, float distance, bool rightLeftSide, float angle)
     {
         return GetCoordinate(point1, 
-            rightLeftSide ? AngleAround360Degrees(angle + 90) : AngleAround360Degrees(angle - 90),
+            rightLeftSide ? AngleAround360Degrees((angle + 90) *  Mathf.PI / 180) : AngleAround360Degrees((angle - 90) * Mathf.PI / 180),
             distance);
     }
         
