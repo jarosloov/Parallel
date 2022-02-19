@@ -10,19 +10,13 @@ public static class NPO
             vector.Add(new Vector2(points[i].position.x, points[i].position.y));
         return vector;
     }
-
-    public static List<Vector2> ConvertPointsToVector2(List<Vector2> points)
+    
+    public static Vector2 ConvertPointToVector(Vector2 point1, Vector2 point2)
     {
-        var vector = new List<Vector2>();
-        for (int i = 1; i < points.Count; i++)
-        {
-            var point1 = points[i-1];
-            var point2 = points[i];
-            vector.Add(new Vector2(point2.x - point1.x, point2.y - point1.y));
-        }
-        return vector;
+       
+        return new Vector2(point2.x - point1.x, point2.y - point1.y);
     }
-
+    
     public static void DrawPolyline(List<Vector2> points)
     {
         for (var i = 1; i < points.Count; i++)
@@ -32,13 +26,22 @@ public static class NPO
         }
     }
 
-    // не работает как надо 
-    //public static float GetAngle(Vector2 a, Vector2 b)
-    //{
-    //    var ch = a.x * b.x + a.y + b.y; // числитель
-    //    var zn = Mathf.Sqrt(a.x * a.x + a.y * a.y) + Mathf.Sqrt(b.x * b.x + b.y * b.y); // знаминатель 
-    //    return Mathf.Acos(ch / zn) * 180 / Mathf.PI;
-    //}
+    public static void DrawPolylineGreen(List<Vector2> points)
+    {
+        for (var i = 1; i < points.Count; i++)
+        {
+            Gizmos.color = Color.green;
+            Gizmos.DrawLine(points[i - 1], points[i]);
+        }
+    }
+
+
+    public static float GetAngleVectors(Vector2 a, Vector2 b)
+    {
+        var ch = a.x * b.x + a.y + b.y; // числитель
+        var zn = Mathf.Sqrt(a.x * a.x + a.y * a.y) + Mathf.Sqrt(b.x * b.x + b.y * b.y); // знаминатель 
+        return Mathf.Acos(ch / zn) * 180 / Mathf.PI;
+    }
 
     public static float GetAngle(Vector2 a, Vector2 b)
     {
@@ -71,16 +74,17 @@ public static class NPO
     
     public static Vector3 GetLineParallelCoord(Vector3 point1, float distance, bool rightLeftSide, float angle)
     {
-        return GetCoordinate(point1, 
-            rightLeftSide ? AngleAround360Degrees((angle + 90) *  Mathf.PI / 180) : AngleAround360Degrees((angle - 90) * Mathf.PI / 180),
-            distance);
+        if (rightLeftSide)
+            return GetCoordinate(point1, (angle + 90) * Mathf.PI / 180, distance);
+        else
+            return GetCoordinate(point1, (angle - 90) * Mathf.PI / 180, distance);
     }
 
     public static Vector2 GetPointCrossLines(Vector2 p1, Vector2 p2, Vector2 p3, Vector2 p4)
     {
         // https://habr.com/ru/post/523440/ 
         float n; // 
-        if(p2.y - p1.y != 0)
+        if((p2.y - p1.y) != 0)
         {
             var q = (p2.x - p1.x) / (p1.y - p2.y);
             var sn = (p3.x - p4.x) + (p3.y - p4.y) * q;
@@ -95,24 +99,9 @@ public static class NPO
         }
         return new Vector2(p3.x + (p4.x - p3.x) * n, p3.y + (p4.y - p3.y) * n);
     }
+    
 
-
-    public static void DrawLineTwoPoint(Vector2 point1, Vector2 point2)
-    {
-        Gizmos.color = Color.red;
-        Gizmos.DrawLine(point1, point2);
-    }
-
-    public static Vector2 GetLineParallelTwoLine(Vector2 point0, Vector2 point1, Vector2 point2, Vector2 point3, 
-        float distance, bool rightLeftSide, float angle)
-    {
-        
-
-        return point0;
-    }
-
-
-    // не работает 
+    // работает хорошо
     public static Vector2 GetPoitnCrossLineAndCircle2(Vector2 pointCrossLines, Vector2 centerCircle, float distance)
     {
         // http://dmtsoft.ru/bn/377/as/oneaticleshablon 
@@ -133,39 +122,101 @@ public static class NPO
         float y1 = k * x1 + b;
         float y2 = k * x2 + b;
 
-        // дописать выбор точки, котороя ближе к Vector2 centerCircle
+        // дописать выбор точки, котороя ближе к Vector2 centerCircle (дописано) 
 
-        return new Vector2(x2, y2);
+        if (GetLengthVector(new Vector2(x1, y1), pointCrossLines) < GetLengthVector(new Vector2(x2, y2), pointCrossLines))
+            return new Vector2(x1, y1);
+        else
+            return new Vector2(x2, y2);
     }
 
-    // не работает как надо  
-    public static Vector2 GetPoitnCrossLineAndCircle(Vector2 pointCrossLines, Vector2 centerCircle, float distance)
+    public static float GetLengthVector(Vector2 point, Vector2 centerCircle)
     {
-        // distance == Radius
-        // https://www.cyberforum.ru/cpp-beginners/thread1456151.html
-
-        var dx = pointCrossLines.x - centerCircle.x;
-        var dy = pointCrossLines.y - centerCircle.y;
-        var l = Mathf.Sqrt(dx * dx + dy * dy);
-        dx /= l;
-        dy /= l;
-
-        return new Vector2(pointCrossLines.x + dx * distance, pointCrossLines.y + dy * distance);
+        return Mathf.Abs(Mathf.Sqrt((point.x - centerCircle.x) * (point.x - centerCircle.x) + 
+        (point.y - centerCircle.y) * (point.y - centerCircle.y)));
     }
 
-    public static List<Vector2> GetParallelPolyline(List<Vector2> startCoordinates, float distance, bool rightLeftSide)
+    private static List<Vector2> CheckingRendering(Vector2 p0, Vector2 p1, Vector2 p2, Vector2 p3,
+         Vector2 crossLinesPoint, Vector2 pointOnCircle, float angleVector, bool rightLeftSide)
     {
+        if (rightLeftSide)
+        {
+            if (angleVector <= 1 && angleVector >= -1)
+            {
+                return new List<Vector2> { p1 };  // когда почти прямая 
+            }
+            else if (angleVector > 0.5 && angleVector <= 30)
+            {
+                return new List<Vector2> { pointOnCircle }; // точка на оружности
+            }
+            else if (angleVector > 30 && angleVector < 180)
+            {
+                return new List<Vector2> { crossLinesPoint }; // точка на пересечении 
+            }
+            else // if (angleVector < -0.5 && angleVector >= -180)
+            {
+                return new List<Vector2> { p1, pointOnCircle, p2 }; // три точки на оружности 
+            }
+        }
+        else
+        {
+            if (angleVector <= 1 && angleVector >= -1)
+            {
+                return new List<Vector2> { p1 };  // когда почти прямая 
+            }
+
+            else if (angleVector < -1 && angleVector >= -30)
+            {
+                return new List<Vector2> { pointOnCircle }; // точка на оружности
+            }
+            else if (angleVector < -30 && angleVector > -180)
+            {
+                return new List<Vector2> { crossLinesPoint }; // точка на пересечении 
+            }
+            else // if (angleVector > 1 && angleVector <= 180)
+            {
+                return new List<Vector2> { p1, pointOnCircle, p2 }; // три точки на оружности 
+            }
+        }
+    }
+
+    public static List<Vector2> GetParallelPolyline2(List<Vector2> startCoordinates, float distance, bool rightLeftSide)
+    {
+        
         var parallelPolyline = new List<Vector2>();
-        var angle = GetAngle(startCoordinates[0], startCoordinates[1]); //Vector2.SignedAngle
-        //for (var i = 0; i < startCoordinates.Count; i = i + 2)
-        //{
-        //    angle = Vector2.SignedAngle(startCoordinates[1], startCoordinates[2]);
-        //    parallelPolyline.Add(GetLineParallelTwoLine(startCoordinates[0], startCoordinates[1], startCoordinates[0],
-        //        startCoordinates[1], distance, rightLeftSide, angle));
-        //}
+        for(var i = 2; i < startCoordinates.Count; i++)
+        {
+            var angle = GetAngle(startCoordinates[i-2], startCoordinates[i-1]);
+            var p0 = GetLineParallelCoord(startCoordinates[i - 2], distance, rightLeftSide, angle);
+            var p1 = GetLineParallelCoord(startCoordinates[i-1], distance, rightLeftSide, angle);
+            angle = GetAngle(startCoordinates[i - 1], startCoordinates[i]);
+            var p2 = GetLineParallelCoord(startCoordinates[i - 1], distance, rightLeftSide, angle);
+            var p3 = GetLineParallelCoord(startCoordinates[i], distance, rightLeftSide, angle);
+            
+            var crossLinesPoint = GetPointCrossLines(p0, p1, p2, p3);
+            var pointOnCircle = GetPoitnCrossLineAndCircle2(crossLinesPoint, startCoordinates[i-1], distance);
+            
+            // отрисовка круга для наглядности 
+            //Gizmos.color = Color.gray;
+            //Gizmos.DrawWireSphere(startCoordinates[i - 1], distance);
+            
+            // угол между векторами
+            var angleVector = Vector2.SignedAngle(ConvertPointToVector(p0, p1), ConvertPointToVector(p2, p3));
+
+            if (i == 2)
+                parallelPolyline.Add(p0);
+                
+            
+            parallelPolyline.AddRange(CheckingRendering(p0, p1, p2, p3, crossLinesPoint, pointOnCircle, angleVector, rightLeftSide));
+
+            if (i == startCoordinates.Count - 1)
+                parallelPolyline.Add(p3);
+
+               
+        }
         return parallelPolyline;
     }
-
+    
     public static List<Vector2> GetParallelPolylineTwoPoint(List<Vector2> startCoordinates, float distance, bool rightLeftSide)
     {
         var parallelPolyline = new List<Vector2>();
@@ -174,4 +225,5 @@ public static class NPO
         parallelPolyline.Add(GetLineParallelCoord(startCoordinates[1], distance, rightLeftSide, angle));
         return parallelPolyline;
     }
+    
 }
